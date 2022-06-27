@@ -1,0 +1,8 @@
+{
+  "parent" : "baum:block/leaves_cross_new",
+  "textures" : {
+    "all" : "baum:block/maple_leaves",
+    "bushy_top" : "baum:block/maple_leaves_bushy_top",
+    "bushy_bottom" : "baum:block/maple_leaves_bushy_bottom"
+  }
+}

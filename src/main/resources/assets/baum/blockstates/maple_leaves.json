@@ -1,0 +1,25 @@
+{
+  "variants" : {
+    "distance=1" : [ {
+      "model" : "baum:block/maple_leaves"
+    } ],
+    "distance=2" : [ {
+      "model" : "baum:block/maple_leaves"
+    } ],
+    "distance=3" : [ {
+      "model" : "baum:block/maple_leaves"
+    } ],
+    "distance=4" : [ {
+      "model" : "baum:block/maple_leaves"
+    } ],
+    "distance=5" : [ {
+      "model" : "baum:block/maple_leaves"
+    } ],
+    "distance=6" : [ {
+      "model" : "baum:block/maple_leaves"
+    } ],
+    "distance=7" : [ {
+      "model" : "baum:block/maple_leaves"
+    } ]
+  }
+}
