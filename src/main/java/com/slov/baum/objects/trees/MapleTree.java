@@ -10,7 +10,7 @@ public class MapleTree extends Tree {
 
 	@Override
 	protected AbstractTreeFeature<NoFeatureConfig> getTreeFeature(Random random) {
-		return new MapleTreeFeature(NoFeatureConfig::deserialize, true, false);
+		return new MapleTreeFeature(NoFeatureConfig::deserialize, true);
 	}
 
 }

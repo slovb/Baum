@@ -1,259 +1,209 @@
 package com.slov.baum.objects.trees;
 
-import java.util.List;
-import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.function.Function;
 
-import com.google.common.collect.Lists;
 import com.mojang.datafixers.Dynamic;
 import com.slov.baum.init.ModBlocks;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
-import net.minecraft.block.LogBlock;
+import net.minecraft.block.CocoaBlock;
+import net.minecraft.block.VineBlock;
+import net.minecraft.state.BooleanProperty;
 import net.minecraft.util.Direction;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.MutableBoundingBox;
+import net.minecraft.world.IWorldWriter;
 import net.minecraft.world.gen.IWorldGenerationReader;
 import net.minecraft.world.gen.feature.AbstractTreeFeature;
 import net.minecraft.world.gen.feature.NoFeatureConfig;
 
 public class MapleTreeFeature extends AbstractTreeFeature<NoFeatureConfig> {
 
-	private static final BlockState LOG = Blocks.DARK_OAK_LOG.getDefaultState();
-	private static final BlockState LEAF = ModBlocks.MAPLE_LEAVES.get().getDefaultState(); // TODO figure out if get is needed
+	private static final BlockState DEFAULT_TRUNK = Blocks.DARK_OAK_LOG.getDefaultState();
+	private static final BlockState DEFAULT_LEAF = ModBlocks.MAPLE_LEAVES.get().getDefaultState(); // TODO figure out if
+																									// get is needed
+	protected final int minTreeHeight;
+	private final boolean vinesGrow;
+	private final BlockState trunk;
+	private final BlockState leaf;
 
-	public MapleTreeFeature(Function<Dynamic<?>, ? extends NoFeatureConfig> configIn, boolean doBlockNotifyIn,
-			boolean extraRandomHeightIn) {
-		super(configIn, doBlockNotifyIn);
+	public MapleTreeFeature(Function<Dynamic<?>, ? extends NoFeatureConfig> configFactoryIn,
+			boolean doBlockNotifyOnPlace) {
+		this(configFactoryIn, doBlockNotifyOnPlace, 4, DEFAULT_TRUNK, DEFAULT_LEAF, false);
+	}
+
+	public MapleTreeFeature(Function<Dynamic<?>, ? extends NoFeatureConfig> configFactoryIn,
+			boolean doBlockNotifyOnPlace, int minTreeHeightIn, BlockState trunkState, BlockState leafState,
+			boolean vinesGrowIn) {
+		super(configFactoryIn, doBlockNotifyOnPlace);
+		this.minTreeHeight = minTreeHeightIn;
+		this.trunk = trunkState;
+		this.leaf = leafState;
+		this.vinesGrow = vinesGrowIn;
 		this.setSapling((net.minecraftforge.common.IPlantable) ModBlocks.MAPLE_SAPLING.get());
-	}
-
-	private void crossSection(IWorldGenerationReader worldIn, BlockPos pos, float p_208529_3_,
-			MutableBoundingBox p_208529_4_, Set<BlockPos> changedBlocks) {
-		int i = (int) ((double) p_208529_3_ + 0.618D);
-
-		for (int j = -i; j <= i; ++j) {
-			for (int k = -i; k <= i; ++k) {
-				if (Math.pow((double) Math.abs(j) + 0.5D, 2.0D)
-						+ Math.pow((double) Math.abs(k) + 0.5D, 2.0D) <= (double) (p_208529_3_ * p_208529_3_)) {
-					BlockPos blockpos = pos.add(j, 0, k);
-					if (isAirOrLeaves(worldIn, blockpos)) {
-						this.setLogState(changedBlocks, worldIn, blockpos, LEAF, p_208529_4_);
-					}
-				}
-			}
-		}
-
-	}
-
-	private float treeShape(int p_208527_1_, int p_208527_2_) {
-		if ((float) p_208527_2_ < (float) p_208527_1_ * 0.3F) {
-			return -1.0F;
-		} else {
-			float f = (float) p_208527_1_ / 2.0F;
-			float f1 = f - (float) p_208527_2_;
-			float f2 = MathHelper.sqrt(f * f - f1 * f1);
-			if (f1 == 0.0F) {
-				f2 = f;
-			} else if (Math.abs(f1) >= f) {
-				return 0.0F;
-			}
-
-			return f2 * 0.5F;
-		}
-	}
-
-	private float foliageShape(int y) {
-		if (y >= 0 && y < 5) {
-			return y != 0 && y != 4 ? 3.0F : 2.0F;
-		} else {
-			return -1.0F;
-		}
-	}
-
-	private void foliageCluster(IWorldGenerationReader worldIn, BlockPos pos, MutableBoundingBox p_202393_3_,
-			Set<BlockPos> changedBlocks) {
-		for (int i = 0; i < 5; ++i) {
-			this.crossSection(worldIn, pos.up(i), this.foliageShape(i), p_202393_3_, changedBlocks);
-		}
-
-	}
-
-	private int makeLimb(Set<BlockPos> p_208523_1_, IWorldGenerationReader worldIn, BlockPos p_208523_3_,
-			BlockPos p_208523_4_, boolean p_208523_5_, MutableBoundingBox p_208523_6_) {
-		if (!p_208523_5_ && Objects.equals(p_208523_3_, p_208523_4_)) {
-			return -1;
-		} else {
-			BlockPos blockpos = p_208523_4_.add(-p_208523_3_.getX(), -p_208523_3_.getY(), -p_208523_3_.getZ());
-			int i = this.getGreatestDistance(blockpos);
-			float f = (float) blockpos.getX() / (float) i;
-			float f1 = (float) blockpos.getY() / (float) i;
-			float f2 = (float) blockpos.getZ() / (float) i;
-
-			for (int j = 0; j <= i; ++j) {
-				BlockPos blockpos1 = p_208523_3_.add((double) (0.5F + (float) j * f), (double) (0.5F + (float) j * f1),
-						(double) (0.5F + (float) j * f2));
-				if (p_208523_5_) {
-					this.setLogState(p_208523_1_, worldIn, blockpos1,
-							LOG.with(LogBlock.AXIS, this.getLoxAxis(p_208523_3_, blockpos1)), p_208523_6_);
-				} else if (!func_214587_a(worldIn, blockpos1)) {
-					return j;
-				}
-			}
-
-			return -1;
-		}
-	}
-
-	/**
-	 * Returns the absolute greatest distance in the BlockPos object.
-	 */
-	private int getGreatestDistance(BlockPos posIn) {
-		int i = MathHelper.abs(posIn.getX());
-		int j = MathHelper.abs(posIn.getY());
-		int k = MathHelper.abs(posIn.getZ());
-		if (k > i && k > j) {
-			return k;
-		} else {
-			return j > i ? j : i;
-		}
-	}
-
-	private Direction.Axis getLoxAxis(BlockPos p_197170_1_, BlockPos p_197170_2_) {
-		Direction.Axis direction$axis = Direction.Axis.Y;
-		int i = Math.abs(p_197170_2_.getX() - p_197170_1_.getX());
-		int j = Math.abs(p_197170_2_.getZ() - p_197170_1_.getZ());
-		int k = Math.max(i, j);
-		if (k > 0) {
-			if (i == k) {
-				direction$axis = Direction.Axis.X;
-			} else if (j == k) {
-				direction$axis = Direction.Axis.Z;
-			}
-		}
-
-		return direction$axis;
-	}
-
-	private void makeFoliage(IWorldGenerationReader worldIn, int p_208525_2_, BlockPos pos,
-			List<MapleTreeFeature.FoliageCoordinates> p_208525_4_, MutableBoundingBox p_208525_5_,
-			Set<BlockPos> changedBlocks) {
-		for (MapleTreeFeature.FoliageCoordinates bigtreefeature$foliagecoordinates : p_208525_4_) {
-			if (this.trimBranches(p_208525_2_, bigtreefeature$foliagecoordinates.getBranchBase() - pos.getY())) {
-				this.foliageCluster(worldIn, bigtreefeature$foliagecoordinates, p_208525_5_, changedBlocks);
-			}
-		}
-
-	}
-
-	private boolean trimBranches(int p_208522_1_, int p_208522_2_) {
-		return (double) p_208522_2_ >= (double) p_208522_1_ * 0.2D;
-	}
-
-	private void makeTrunk(Set<BlockPos> p_208526_1_, IWorldGenerationReader p_208526_2_, BlockPos p_208526_3_,
-			int p_208526_4_, MutableBoundingBox p_208526_5_) {
-		this.makeLimb(p_208526_1_, p_208526_2_, p_208526_3_, p_208526_3_.up(p_208526_4_), true, p_208526_5_);
-	}
-
-	private void makeBranches(Set<BlockPos> p_208524_1_, IWorldGenerationReader p_208524_2_, int p_208524_3_,
-			BlockPos p_208524_4_, List<MapleTreeFeature.FoliageCoordinates> p_208524_5_,
-			MutableBoundingBox p_208524_6_) {
-		for (MapleTreeFeature.FoliageCoordinates bigtreefeature$foliagecoordinates : p_208524_5_) {
-			int i = bigtreefeature$foliagecoordinates.getBranchBase();
-			BlockPos blockpos = new BlockPos(p_208524_4_.getX(), i, p_208524_4_.getZ());
-			if (!blockpos.equals(bigtreefeature$foliagecoordinates)
-					&& this.trimBranches(p_208524_3_, i - p_208524_4_.getY())) {
-				this.makeLimb(p_208524_1_, p_208524_2_, blockpos, bigtreefeature$foliagecoordinates, true, p_208524_6_);
-			}
-		}
-
 	}
 
 	public boolean place(Set<BlockPos> changedBlocks, IWorldGenerationReader worldIn, Random rand, BlockPos position,
 			MutableBoundingBox p_208519_5_) {
-		Random random = new Random(rand.nextLong());
-		int i = this.checkLocation(changedBlocks, worldIn, position, 5 + random.nextInt(12), p_208519_5_);
-		if (i == -1) {
-			return false;
-		} else {
-			this.setDirtAt(worldIn, position.down(), position);
-			int j = (int) ((double) i * 0.618D);
-			if (j >= i) {
-				j = i - 1;
-			}
+		int i = this.getHeight(rand);
+		boolean flag = true;
+		if (position.getY() >= 1 && position.getY() + i + 1 <= worldIn.getMaxHeight()) {
+			for (int j = position.getY(); j <= position.getY() + 1 + i; ++j) {
+				int k = 1;
+				if (j == position.getY()) {
+					k = 0;
+				}
 
-			double d0 = 1.0D;
-			int k = (int) (1.382D + Math.pow(1.0D * (double) i / 13.0D, 2.0D));
-			if (k < 1) {
-				k = 1;
-			}
+				if (j >= position.getY() + 1 + i - 2) {
+					k = 2;
+				}
 
-			int l = position.getY() + j;
-			int i1 = i - 5;
-			List<MapleTreeFeature.FoliageCoordinates> list = Lists.newArrayList();
-			list.add(new MapleTreeFeature.FoliageCoordinates(position.up(i1), l));
+				BlockPos.MutableBlockPos blockpos$mutableblockpos = new BlockPos.MutableBlockPos();
 
-			for (; i1 >= 0; --i1) {
-				float f = this.treeShape(i, i1);
-				if (!(f < 0.0F)) {
-					for (int j1 = 0; j1 < k; ++j1) {
-						double d1 = 1.0D;
-						double d2 = 1.0D * (double) f * ((double) random.nextFloat() + 0.328D);
-						double d3 = (double) (random.nextFloat() * 2.0F) * Math.PI;
-						double d4 = d2 * Math.sin(d3) + 0.5D;
-						double d5 = d2 * Math.cos(d3) + 0.5D;
-						BlockPos blockpos = position.add(d4, (double) (i1 - 1), d5);
-						BlockPos blockpos1 = blockpos.up(5);
-						if (this.makeLimb(changedBlocks, worldIn, blockpos, blockpos1, false, p_208519_5_) == -1) {
-							int k1 = position.getX() - blockpos.getX();
-							int l1 = position.getZ() - blockpos.getZ();
-							double d6 = (double) blockpos.getY() - Math.sqrt((double) (k1 * k1 + l1 * l1)) * 0.381D;
-							int i2 = d6 > (double) l ? l : (int) d6;
-							BlockPos blockpos2 = new BlockPos(position.getX(), i2, position.getZ());
-							if (this.makeLimb(changedBlocks, worldIn, blockpos2, blockpos, false, p_208519_5_) == -1) {
-								list.add(new MapleTreeFeature.FoliageCoordinates(blockpos, blockpos2.getY()));
+				for (int l = position.getX() - k; l <= position.getX() + k && flag; ++l) {
+					for (int i1 = position.getZ() - k; i1 <= position.getZ() + k && flag; ++i1) {
+						if (j >= 0 && j < worldIn.getMaxHeight()) {
+							if (!func_214587_a(worldIn, blockpos$mutableblockpos.setPos(l, j, i1))) {
+								flag = false;
 							}
+						} else {
+							flag = false;
 						}
 					}
 				}
 			}
 
-			this.makeFoliage(worldIn, i, position, list, p_208519_5_, changedBlocks);
-			this.makeTrunk(changedBlocks, worldIn, position, j, p_208519_5_);
-			this.makeBranches(changedBlocks, worldIn, i, position, list, p_208519_5_);
-			return true;
-		}
-	}
+			if (!flag) {
+				return false;
+			} else if (isSoil(worldIn, position.down(), getSapling())
+					&& position.getY() < worldIn.getMaxHeight() - i - 1) {
+				this.setDirtAt(worldIn, position.down(), position);
+				int j2 = 3;
+				int k2 = 0;
 
-	private int checkLocation(Set<BlockPos> p_208528_1_, IWorldGenerationReader p_208528_2_, BlockPos p_208528_3_,
-			int p_208528_4_, MutableBoundingBox p_208528_5_) {
-		if (!isSoilOrFarm(p_208528_2_, p_208528_3_.down(), getSapling())) {
-			return -1;
-		} else {
-			int i = this.makeLimb(p_208528_1_, p_208528_2_, p_208528_3_, p_208528_3_.up(p_208528_4_ - 1), false,
-					p_208528_5_);
-			if (i == -1) {
-				return p_208528_4_;
+				for (int l2 = position.getY() - 3 + i; l2 <= position.getY() + i; ++l2) {
+					int l3 = l2 - (position.getY() + i);
+					int j4 = 1 - l3 / 2;
+
+					for (int j1 = position.getX() - j4; j1 <= position.getX() + j4; ++j1) {
+						int k1 = j1 - position.getX();
+
+						for (int l1 = position.getZ() - j4; l1 <= position.getZ() + j4; ++l1) {
+							int i2 = l1 - position.getZ();
+							if (Math.abs(k1) != j4 || Math.abs(i2) != j4 || rand.nextInt(2) != 0 && l3 != 0) {
+								BlockPos blockpos = new BlockPos(j1, l2, l1);
+								if (isAirOrLeaves(worldIn, blockpos) || func_214576_j(worldIn, blockpos)) {
+									this.setLogState(changedBlocks, worldIn, blockpos, this.leaf, p_208519_5_);
+								}
+							}
+						}
+					}
+				}
+
+				for (int i3 = 0; i3 < i; ++i3) {
+					if (isAirOrLeaves(worldIn, position.up(i3)) || func_214576_j(worldIn, position.up(i3))) {
+						this.setLogState(changedBlocks, worldIn, position.up(i3), this.trunk, p_208519_5_);
+						if (this.vinesGrow && i3 > 0) {
+							if (rand.nextInt(3) > 0 && isAir(worldIn, position.add(-1, i3, 0))) {
+								this.addVine(worldIn, position.add(-1, i3, 0), VineBlock.EAST);
+							}
+
+							if (rand.nextInt(3) > 0 && isAir(worldIn, position.add(1, i3, 0))) {
+								this.addVine(worldIn, position.add(1, i3, 0), VineBlock.WEST);
+							}
+
+							if (rand.nextInt(3) > 0 && isAir(worldIn, position.add(0, i3, -1))) {
+								this.addVine(worldIn, position.add(0, i3, -1), VineBlock.SOUTH);
+							}
+
+							if (rand.nextInt(3) > 0 && isAir(worldIn, position.add(0, i3, 1))) {
+								this.addVine(worldIn, position.add(0, i3, 1), VineBlock.NORTH);
+							}
+						}
+					}
+				}
+
+				if (this.vinesGrow) {
+					for (int j3 = position.getY() - 3 + i; j3 <= position.getY() + i; ++j3) {
+						int i4 = j3 - (position.getY() + i);
+						int k4 = 2 - i4 / 2;
+						BlockPos.MutableBlockPos blockpos$mutableblockpos1 = new BlockPos.MutableBlockPos();
+
+						for (int l4 = position.getX() - k4; l4 <= position.getX() + k4; ++l4) {
+							for (int i5 = position.getZ() - k4; i5 <= position.getZ() + k4; ++i5) {
+								blockpos$mutableblockpos1.setPos(l4, j3, i5);
+								if (isLeaves(worldIn, blockpos$mutableblockpos1)) {
+									BlockPos blockpos3 = blockpos$mutableblockpos1.west();
+									BlockPos blockpos4 = blockpos$mutableblockpos1.east();
+									BlockPos blockpos1 = blockpos$mutableblockpos1.north();
+									BlockPos blockpos2 = blockpos$mutableblockpos1.south();
+									if (rand.nextInt(4) == 0 && isAir(worldIn, blockpos3)) {
+										this.addHangingVine(worldIn, blockpos3, VineBlock.EAST);
+									}
+
+									if (rand.nextInt(4) == 0 && isAir(worldIn, blockpos4)) {
+										this.addHangingVine(worldIn, blockpos4, VineBlock.WEST);
+									}
+
+									if (rand.nextInt(4) == 0 && isAir(worldIn, blockpos1)) {
+										this.addHangingVine(worldIn, blockpos1, VineBlock.SOUTH);
+									}
+
+									if (rand.nextInt(4) == 0 && isAir(worldIn, blockpos2)) {
+										this.addHangingVine(worldIn, blockpos2, VineBlock.NORTH);
+									}
+								}
+							}
+						}
+					}
+
+					if (rand.nextInt(5) == 0 && i > 5) {
+						for (int k3 = 0; k3 < 2; ++k3) {
+							for (Direction direction : Direction.Plane.HORIZONTAL) {
+								if (rand.nextInt(4 - k3) == 0) {
+									Direction direction1 = direction.getOpposite();
+									this.placeCocoa(worldIn, rand.nextInt(3),
+											position.add(direction1.getXOffset(), i - 5 + k3, direction1.getZOffset()),
+											direction);
+								}
+							}
+						}
+					}
+				}
+
+				return true;
 			} else {
-				return i < 6 ? -1 : i;
+				return false;
 			}
+		} else {
+			return false;
 		}
 	}
 
-	static class FoliageCoordinates extends BlockPos {
-		private final int branchBase;
+	protected int getHeight(Random random) {
+		return this.minTreeHeight + random.nextInt(3);
+	}
 
-		public FoliageCoordinates(BlockPos pos, int p_i45635_2_) {
-			super(pos.getX(), pos.getY(), pos.getZ());
-			this.branchBase = p_i45635_2_;
+	private void placeCocoa(IWorldWriter worldIn, int age, BlockPos pos, Direction side) {
+		this.setBlockState(worldIn, pos, Blocks.COCOA.getDefaultState().with(CocoaBlock.AGE, Integer.valueOf(age))
+				.with(CocoaBlock.HORIZONTAL_FACING, side));
+	}
+
+	private void addVine(IWorldWriter worldIn, BlockPos pos, BooleanProperty prop) {
+		this.setBlockState(worldIn, pos, Blocks.VINE.getDefaultState().with(prop, Boolean.valueOf(true)));
+	}
+
+	private void addHangingVine(IWorldGenerationReader worldIn, BlockPos pos, BooleanProperty prop) {
+		this.addVine(worldIn, pos, prop);
+		int i = 4;
+
+		for (BlockPos blockpos = pos.down(); isAir(worldIn, blockpos) && i > 0; --i) {
+			this.addVine(worldIn, blockpos, prop);
+			blockpos = blockpos.down();
 		}
 
-		public int getBranchBase() {
-			return this.branchBase;
-		}
 	}
 }
