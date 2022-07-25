@@ -31,7 +31,7 @@ def main(filename):
     # color_to = [(154,23,3), (193,34,12), (92,37,25), (198,44,17)]
     # color_to = [(92,37,25), (154,23,3), (193,34,12), (198,44,17)]
     dark = (85, 1, 0)
-    light = (236,27,36)
+    light = (232, 37, 50)
     def tween(color):
         start = color_from[0]
         end = color_from[-1]
